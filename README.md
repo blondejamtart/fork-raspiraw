@@ -11,6 +11,8 @@ I2C communications).
 
 The raw Bayer format frames captured by **raspiraw** can be converted to .ppm images by modified **dcraw** image processing app: [https://github.com/6by9/dcraw](https://github.com/6by9/dcraw)
 
+This library will provide a class for controlling & capturing images from a raspi cam; eventually it will be integrated into an [areaDector](https://github.com/areaDetector/areaDetector) driver and perhaps also and [ODIN](https://github.com/odin-detector) driver
+
 Supported sensors:
 
 	adv7282m
