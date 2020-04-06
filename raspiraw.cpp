@@ -931,14 +931,14 @@ void update_regs(const struct sensor_def *sensor, struct mode_def *mode, int hfl
     {
         modRegBit(mode, sensor->vflip_reg, sensor->vflip_reg_bit, vflip, XOR);
         if (vflip && !sensor->flips_dont_change_bayer_order)
-            mode->order ^= 2;
+            mode->order ^= (uint8_t)(2);
     }
 
     if (sensor->hflip_reg)
     {
         modRegBit(mode, sensor->hflip_reg, sensor->hflip_reg_bit, hflip, XOR);
         if (hflip && !sensor->flips_dont_change_bayer_order)
-            mode->order ^= 1;
+            mode->order ^= (uint8_t)(1);
     }
 
     if (sensor->exposure_reg && exposure != -1)
