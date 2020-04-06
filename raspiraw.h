@@ -72,7 +72,7 @@ enum bayer_order
 {
     //Carefully ordered so that an hflip is ^1,
     //and a vflip is ^2.
-            BAYER_ORDER_BGGR,
+    BAYER_ORDER_BGGR,
     BAYER_ORDER_GBRG,
     BAYER_ORDER_GRBG,
     BAYER_ORDER_RGGB
@@ -152,9 +152,11 @@ struct sensor_def
 
 #define NUM_ELEMENTS(a)  (sizeof(a) / sizeof(a[0]))
 
-#include "ov5647_modes.h"
-#include "imx219_modes.h"
-#include "adv7282m_modes.h"
+extern "C" {
+    #include "ov5647_modes.h"
+    #include "imx219_modes.h"
+    #include "adv7282m_modes.h"
+}
 
 const struct sensor_def *sensors[] = {
         &ov5647,
@@ -271,7 +273,7 @@ uint32_t order_and_bit_depth_to_encoding(enum bayer_order order, int bit_depth);
 
 void modReg(struct mode_def *mode, uint16_t reg, int startBit, int endBit, int value, enum operation op);
 
-int camera_main(RASPIRAW_PARAMS_T cfg);
+int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)());
 
 void modRegBit(struct mode_def *mode, uint16_t reg, int bit, int value, enum operation op);
 

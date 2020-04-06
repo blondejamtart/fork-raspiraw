@@ -26,6 +26,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <zmq.h>
+
 #include "raspiraw.h"
 
 static char i2c_device_name[I2C_DEVICE_NAME_LEN];
@@ -220,53 +222,6 @@ MMAL_STATUS_T create_filenames(char **finalName, char *pattern, int frame)
 
 int running = 0;
 
-static void callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
-{
-    static int count = 0;
-    vcos_log_error("Buffer %p returned, filled %d, timestamp %llu, flags %04X", buffer, buffer->length, buffer->pts,
-                   buffer->flags);
-    if (running)
-    {
-        RASPIRAW_PARAMS_T *cfg = (RASPIRAW_PARAMS_T *) port->userdata;
-
-        if (!(buffer->flags & MMAL_BUFFER_HEADER_FLAG_CODECSIDEINFO))
-        {
-//            // Save every Nth frame
-//            // SD card access is too slow to do much more.
-//            FILE *file;
-//            char *filename = NULL;
-//            if (create_filenames(&filename, cfg->output, count) == MMAL_SUCCESS)
-//            {
-//                file = fopen(filename, "wb");
-//                if (file)
-//                {
-//                    if (cfg->ptso)  // make sure previous malloc() was successful
-//                    {
-//                        cfg->ptso->idx = count;
-//                        cfg->ptso->pts = buffer->pts;
-//                        cfg->ptso->nxt = malloc(sizeof(*cfg->ptso->nxt));
-//                        cfg->ptso = cfg->ptso->nxt;
-//                    }
-//                    if (!cfg->write_empty)
-//                    {
-//                        if (cfg->write_header)
-//                            fwrite(brcm_header, BRCM_RAW_HEADER_LENGTH, 1, file);
-//                        fwrite(buffer->data, buffer->length, 1, file);
-//                    }
-//                    fclose(file);
-//                }
-//                free(filename);
-//            }
-            // Yeet every frame via ZeroMQ
-            // TODO: do zmq send here!
-        }
-        buffer->length = 0;
-        mmal_port_send_buffer(port, buffer);
-    }
-    else
-        mmal_buffer_header_release(buffer);
-}
-
 uint32_t order_and_bit_depth_to_encoding(enum bayer_order order, int bit_depth)
 {
     //BAYER_ORDER_BGGR,
@@ -318,7 +273,7 @@ uint32_t order_and_bit_depth_to_encoding(enum bayer_order order, int bit_depth)
     return 0;
 }
 
-int camera_main(RASPIRAW_PARAMS_T cfg)
+int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)())
 {
 //    RASPIRAW_PARAMS_T cfg = {
 //            .mode = 0,
