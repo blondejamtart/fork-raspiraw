@@ -932,7 +932,8 @@ void update_regs(const struct sensor_def *sensor, struct mode_def *mode, int hfl
         modRegBit(mode, sensor->vflip_reg, sensor->vflip_reg_bit, vflip, XOR);
         if (vflip && !sensor->flips_dont_change_bayer_order)
         {
-            mode->order = ((uint8_t)(mode->order))^2;
+            uint8_t tmp = mode->order^2;
+            mode->order = tmp;
         }
     }
 
@@ -941,7 +942,8 @@ void update_regs(const struct sensor_def *sensor, struct mode_def *mode, int hfl
         modRegBit(mode, sensor->hflip_reg, sensor->hflip_reg_bit, hflip, XOR);
         if (hflip && !sensor->flips_dont_change_bayer_order)
         {
-            mode->order = ((uint8_t)(mode->order))^1;
+            uint8_t tmp = mode->order^1;
+            mode->order = tmp;
         }
     }
 
