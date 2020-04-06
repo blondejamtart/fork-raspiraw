@@ -590,7 +590,7 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
                 break;
             default:
                 vcos_log_error("Unknown output bit depth %d", cfg.bit_depth);
-                rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_UNPACK_NONE;
+                rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_NONE;
                 break;
         }
     }
