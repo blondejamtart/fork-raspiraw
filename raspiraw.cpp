@@ -42,16 +42,16 @@ static int i2c_rd(int fd, uint8_t i2c_addr, uint16_t reg, uint8_t *values, uint3
     struct i2c_rdwr_ioctl_data msgset;
     struct i2c_msg msgs[2] = {
             {
-                    .addr = i2c_addr,
-                    .flags = 0,
-                    .len = 2,
-                    .buf = buf,
+                    addr:  i2c_addr,
+                    flags: 0,
+                    len:   2,
+                    buf:   buf,
             },
             {
-                    .addr = i2c_addr,
-                    .flags = I2C_M_RD,
-                    .len = n,
-                    .buf = values,
+                    addr:  i2c_addr,
+                    flags: I2C_M_RD,
+                    len:   n,
+                    buf:   values,
             },
     };
 

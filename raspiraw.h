@@ -52,12 +52,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "interface/vcos/vcos.h"
 #include "bcm_host.h"
 
-extern "C" {
-#include "ov5647_modes.h"
-#include "imx219_modes.h"
-#include "adv7282m_modes.h"
-}
-
 #include "interface/mmal/mmal.h"
 #include "interface/mmal/mmal_buffer.h"
 #include "interface/mmal/mmal_logging.h"
@@ -157,6 +151,10 @@ struct sensor_def
 
 
 #define NUM_ELEMENTS(a)  (sizeof(a) / sizeof(a[0]))
+
+#include "ov5647_modes.h"
+#include "imx219_modes.h"
+#include "adv7282m_modes.h"
 
 const struct sensor_def *sensors[] = {
         &ov5647,

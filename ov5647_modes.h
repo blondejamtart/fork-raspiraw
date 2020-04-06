@@ -861,37 +861,37 @@ struct sensor_regs ov5647_stop[] = {
 
 // ID register settings taken from http://www.mail-archive.com/linux-kernel@vger.kernel.org/msg1298623.html
 struct sensor_def ov5647 = {
-   .name =                 "ov5647",
-   .modes =                ov5647_modes,
-   .num_modes =            NUM_ELEMENTS(ov5647_modes),
-   .stop =                 ov5647_stop,
-   .num_stop_regs =        NUM_ELEMENTS(ov5647_stop),
+   name:                  "ov5647",
+   modes:                 ov5647_modes,
+   num_modes:             NUM_ELEMENTS(ov5647_modes),
+   stop:                  ov5647_stop,
+   num_stop_regs:         NUM_ELEMENTS(ov5647_stop),
 
-   .i2c_addr =             0x36,
-   .i2c_addressing =       2,
-   .i2c_ident_length =     2,
-   .i2c_ident_reg =        0x300A,
-   .i2c_ident_value =      0x4756,  //0x5647 byte swapped
+   i2c_addr:              0x36,
+   i2c_addressing:        2,
+   i2c_ident_length:      2,
+   i2c_ident_reg:         0x300A,
+   i2c_ident_value:       0x4756,  //0x5647 byte swapped
 
-   .vflip_reg =            0x3820,
-   .vflip_reg_bit =        0,
-   .hflip_reg =            0x3821,
-   .hflip_reg_bit =        0,
+   vflip_reg:             0x3820,
+   vflip_reg_bit:         0,
+   hflip_reg:             0x3821,
+   hflip_reg_bit:         0,
 
-   .exposure_reg =         0x3500,
-   .exposure_reg_num_bits = 20,
+   exposure_reg:          0x3500,
+   exposure_reg_num_bits:  20,
 
-   .vts_reg =              0x380E,
-   .vts_reg_num_bits =     10,      // total vertical size [9:8] and [7:0] (ov5647 datasheet)
+   vts_reg:               0x380E,
+   vts_reg_num_bits:      10,      // total vertical size [9:8] and [7:0] (ov5647 datasheet)
 
-   .gain_reg =             0x350A,
-   .gain_reg_num_bits =    10,
+   gain_reg:              0x350A,
+   gain_reg_num_bits:     10,
 
-   .xos_reg =              0x3808,
-   .xos_reg_num_bits =     12,      // x_output_size [11:8] and [7:0] (ov5647 datasheet)
+   xos_reg:               0x3808,
+   xos_reg_num_bits:      12,      // x_output_size [11:8] and [7:0] (ov5647 datasheet)
 
-   .yos_reg =              0x380A,
-   .yos_reg_num_bits =     12,      // y_output_size [11:8] and [7:0] (ov5647 datasheet)
+   yos_reg:               0x380A,
+   yos_reg_num_bits:      12,      // y_output_size [11:8] and [7:0] (ov5647 datasheet)
 };
 
 #endif

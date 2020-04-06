@@ -319,34 +319,34 @@ struct sensor_regs adv7282_stop[] = {
 
 // ID register settings taken from http://www.mail-archive.com/linux-kernel@vger.kernel.org/msg1298623.html
 struct sensor_def adv7282 = {
-   .name =                 "adv7282",
-   .modes =                adv7282_modes,
-   .num_modes =            NUM_ELEMENTS(adv7282_modes),
-   .stop =                 adv7282_stop,
-   .num_stop_regs =        NUM_ELEMENTS(adv7282_stop),
+   name:                  "adv7282",
+   modes:                 adv7282_modes,
+   num_modes:             NUM_ELEMENTS(adv7282_modes),
+   stop:                  adv7282_stop,
+   num_stop_regs:         NUM_ELEMENTS(adv7282_stop),
 
-   .i2c_addr =             ADV7180_DEFAULT_BASE_I2C_ADDR,
-   .i2c_addressing =       1,
-   .i2c_ident_length =     1,
-   .i2c_ident_reg =        0x1100,
-   .i2c_ident_value =      0x42,
+   i2c_addr :             ADV7180_DEFAULT_BASE_I2C_ADDR,
+   i2c_addressing:        1,
+   i2c_ident_length       1,
+   i2c_ident_reg:         0x1100,
+   i2c_ident_value:       0x42,
 
-   .vflip_reg =            0,
-   .vflip_reg_bit =        0,
-   .hflip_reg =            0,
-   .hflip_reg_bit =        0,
+   vflip_reg:             0,
+   vflip_reg_bit:         0,
+   hflip_reg:             0,
+   hflip_reg_bit:         0,
 
-   .exposure_reg =         0,
-   .exposure_reg_num_bits = 0,
+   exposure_reg:          0,
+   exposure_reg_num_bits: 0,
 
-   .gain_reg =             0,
-   .gain_reg_num_bits =    0,
+   gain_reg:              0,
+   gain_reg_num_bits:     0,
 
-   .xos_reg =              0,
-   .xos_reg_num_bits =     0,
+   xos_reg:               0,
+   xos_reg_num_bits:      0,
 
-   .yos_reg =              0,
-   .yos_reg_num_bits =     0,
+   yos_reg:               0,
+   yos_reg_num_bits:      0,
 };
 
 #endif

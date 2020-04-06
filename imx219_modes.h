@@ -596,37 +596,37 @@ struct sensor_regs imx219_stop[] = {
 // https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-lollipop-wear-release/drivers/media/video/imx219.c
 // Flip settings taken from https://github.com/rellimmot/Sony-IMX219-Raspberry-Pi-V2-CMOS/blob/master/imx219mipiraw_Sensor.c#L585
 struct sensor_def imx219 = {
-      .name =                 "imx219",
-      .modes =                imx219_modes,
-      .num_modes =            NUM_ELEMENTS(imx219_modes),
-      .stop =                 imx219_stop,
-      .num_stop_regs =        NUM_ELEMENTS(imx219_stop),
+      name:                  "imx219",
+      modes:                 imx219_modes,
+      num_modes:             NUM_ELEMENTS(imx219_modes),
+      stop:                  imx219_stop,
+      num_stop_regs:         NUM_ELEMENTS(imx219_stop),
 
-      .i2c_addr =             0x10,
-      .i2c_addressing =       2,
-      .i2c_ident_length =     2,
-      .i2c_ident_reg =        0x0000,
-      .i2c_ident_value =      0x1902,     // 0x0219 bytes reversed
+      i2c_addr:              0x10,
+      i2c_addressing:        2,
+      i2c_ident_length:      2,
+      i2c_ident_reg:         0x0000,
+      i2c_ident_value:       0x1902,     // 0x0219 bytes reversed
 
-      .vflip_reg =            0x172,
-      .vflip_reg_bit =        0,
-      .hflip_reg =            0x172,
-      .hflip_reg_bit =        1,
+      vflip_reg:             0x172,
+      vflip_reg_bit:         0,
+      hflip_reg:             0x172,
+      hflip_reg_bit:         1,
 
-      .exposure_reg =         0x015A,
-      .exposure_reg_num_bits = 16,
+      exposure_reg:          0x015A,
+      exposure_reg_num_bits: 16,
 
-      .vts_reg =              0x0160,
-      .vts_reg_num_bits =     16,
+      vts_reg:               0x0160,
+      vts_reg_num_bits:      16,
 
-      .gain_reg =             0x0157,
-      .gain_reg_num_bits =    8,    //Only valid up to 230.
+      gain_reg:              0x0157,
+      gain_reg_num_bits:     8,    //Only valid up to 230.
 
-      .xos_reg =              0x016C,
-      .xos_reg_num_bits =     12,      // x_output_size [11:8] and [7:0] (imx219 datasheet)
+      xos_reg:               0x016C,
+      xos_reg_num_bits:      12,      // x_output_size [11:8] and [7:0] (imx219 datasheet)
 
-      .yos_reg =              0x016E,
-      .yos_reg_num_bits =     12,      // y_output_size [11:8] and [7:0] (imx219 datasheet)
+      yos_reg:               0x016E,
+      yos_reg_num_bits:      12,      // y_output_size [11:8] and [7:0] (imx219 datasheet)
 };
 
 #endif
