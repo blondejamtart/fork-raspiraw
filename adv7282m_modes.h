@@ -325,9 +325,9 @@ struct sensor_def adv7282 = {
    stop:                  adv7282_stop,
    num_stop_regs:         NUM_ELEMENTS(adv7282_stop),
 
-   i2c_addr :             ADV7180_DEFAULT_BASE_I2C_ADDR,
+   i2c_addr:              ADV7180_DEFAULT_BASE_I2C_ADDR,
    i2c_addressing:        1,
-   i2c_ident_length       1,
+   i2c_ident_length:      1,
    i2c_ident_reg:         0x1100,
    i2c_ident_value:       0x42,
 
