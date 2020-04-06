@@ -273,7 +273,7 @@ uint32_t order_and_bit_depth_to_encoding(enum bayer_order order, int bit_depth)
     return 0;
 }
 
-int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)())
+int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer))
 {
 //    RASPIRAW_PARAMS_T cfg = {
 //            .mode = 0,
