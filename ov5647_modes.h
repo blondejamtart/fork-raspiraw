@@ -869,6 +869,7 @@ struct sensor_def ov5647 = {
 
    i2c_addr:              0x36,
    i2c_addressing:        2,
+   i2c_data_size:         0,
    i2c_ident_length:      2,
    i2c_ident_reg:         0x300A,
    i2c_ident_value:       0x4756,  //0x5647 byte swapped
@@ -877,6 +878,7 @@ struct sensor_def ov5647 = {
    vflip_reg_bit:         0,
    hflip_reg:             0x3821,
    hflip_reg_bit:         0,
+   flips_dont_change_bayer_order: 0,
 
    exposure_reg:          0x3500,
    exposure_reg_num_bits:  20,

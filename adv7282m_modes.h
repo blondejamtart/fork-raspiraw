@@ -327,6 +327,7 @@ struct sensor_def adv7282 = {
 
    i2c_addr:              ADV7180_DEFAULT_BASE_I2C_ADDR,
    i2c_addressing:        1,
+   i2c_data_size:         0,
    i2c_ident_length:      1,
    i2c_ident_reg:         0x1100,
    i2c_ident_value:       0x42,
@@ -335,6 +336,7 @@ struct sensor_def adv7282 = {
    vflip_reg_bit:         0,
    hflip_reg:             0,
    hflip_reg_bit:         0,
+   flips_dont_change_bayer_order: 0,
 
    exposure_reg:          0,
    exposure_reg_num_bits: 0,
