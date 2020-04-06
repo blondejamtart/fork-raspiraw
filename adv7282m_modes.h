@@ -341,6 +341,9 @@ struct sensor_def adv7282 = {
    exposure_reg:          0,
    exposure_reg_num_bits: 0,
 
+   vts_reg:               0,
+   vts_reg_num_bits:      0,
+
    gain_reg:              0,
    gain_reg_num_bits:     0,
 
