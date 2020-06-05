@@ -30,6 +30,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "raspiraw.h"
 
+#define NUM_ELEMENTS(a)  (sizeof(a) / sizeof(a[0]))
+
+#include "ov5647_modes.h"
+#include "imx219_modes.h"
+#include "adv7282m_modes.h"
+
+const struct sensor_def *sensors[] = {
+        &ov5647,
+        &imx219,
+        &adv7282,
+        NULL
+};
+
+
 static char i2c_device_name[I2C_DEVICE_NAME_LEN];
 
 struct brcm_raw_header *brcm_header = NULL;

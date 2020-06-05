@@ -149,20 +149,6 @@ struct sensor_def
     int yos_reg_num_bits;
 };
 
-
-#define NUM_ELEMENTS(a)  (sizeof(a) / sizeof(a[0]))
-
-#include "ov5647_modes.h"
-#include "imx219_modes.h"
-#include "adv7282m_modes.h"
-
-const struct sensor_def *sensors[] = {
-        &ov5647,
-        &imx219,
-        &adv7282,
-        NULL
-};
-
 enum
 {
     CommandHelp,
