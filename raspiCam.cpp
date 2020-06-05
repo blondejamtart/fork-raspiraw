@@ -98,7 +98,7 @@ int raspiCam::start() {
 }
 
 int main() {
-    raspiCam camObject = new raspiCam();
-    camObject.start();
+    raspiCam* camObject = new raspiCam();
+    camObject->start();
     delete camObject;
 }
