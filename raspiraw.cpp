@@ -289,7 +289,8 @@ void update_regs(const struct sensor_def *sensor, struct mode_def *mode, int hfl
     }
 }
 
-void configure_sensor_raw(RASPIRAW_PARAMS_T *cfg, const struct sensor_def *sensor, struct mode_def *sensor_mode, uint32_t *encoding) {
+int configure_sensor_raw(RASPIRAW_PARAMS_T *cfg, const struct sensor_def *sensor, struct mode_def *sensor_mode,
+                         uint32_t *encoding) {
     snprintf(i2c_device_name, sizeof(i2c_device_name), "/dev/i2c-%d", cfg->i2c_bus);
     printf("Using i2C device %s\n", i2c_device_name);
     sensor = probe_sensor();
@@ -298,8 +299,8 @@ void configure_sensor_raw(RASPIRAW_PARAMS_T *cfg, const struct sensor_def *senso
         return -1;
     }
 
-    if (cfg->mode >= 0 && cfg.mode < sensor->num_modes) {
-        sensor_mode = &sensor->modes[cfg.mode];
+    if (cfg->mode >= 0 && cfg->mode < sensor->num_modes) {
+        sensor_mode = &sensor->modes[cfg->mode];
     }
 
     if (!sensor_mode) {
@@ -548,14 +549,14 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
     uint32_t encoding;
     const struct sensor_def *sensor;
     struct mode_def *sensor_mode = NULL;
+    MMAL_STATUS_T status;
 
     bcm_host_init();
     vcos_log_register("RaspiRaw", VCOS_LOG_CATEGORY);
     {
-       configure_sensor_raw(&cfg, sensor, sensor_mode, &encoding)
+        status = configure_sensor_raw(&cfg, sensor, sensor_mode, &encoding);
 
         MMAL_COMPONENT_T *rawcam = NULL, *isp = NULL, *render = NULL;
-        MMAL_STATUS_T status;
         MMAL_PORT_T *output = NULL;
         MMAL_POOL_T *pool = NULL;
         MMAL_CONNECTION_T *rawcam_isp = NULL;
@@ -572,6 +573,25 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
             vcos_log_error("Failed to create rawcam");
             return -1;
         }
+
+
+        MMAL_PARAMETER_CAMERA_CONFIG_T cam_config =
+                {
+                        {MMAL_PARAMETER_CAMERA_CONFIG, sizeof(cam_config)},
+                        .max_stills_w = cfg.width,
+                        .max_stills_h = cfg.height,
+                        .stills_yuv422 = 1,
+                        .one_shot_stills = 1,
+                        .max_preview_video_w = cfg.width,
+                        .max_preview_video_h = cfg.height,
+                        .num_preview_video_frames = 3,
+                        .stills_capture_circular_buffer_height = 0,
+                        .fast_preview_resume = 0,
+                        .use_stc_timestamp = MMAL_PARAM_TIMESTAMP_MODE_RESET_STC
+                };
+        status = mmal_port_parameter_set(rawcam->control, &cam_config.hdr);
+
+        status = configure_sensor_raw(&cfg, sensor, sensor_mode, &encoding);
 
         status = mmal_component_create("vc.ril.isp", &isp);
         if (status != MMAL_SUCCESS) {
@@ -649,28 +669,13 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
             vcos_log_error("Failed to set cfg");
             goto component_destroy;
         }
-        MMAL_PARAMETER_CAMERA_CONFIG_T cam_config =
-                {
-                        { MMAL_PARAMETER_CAMERA_CONFIG, sizeof(cam_config) },
-                        .max_stills_w = cfg->width,
-                        .max_stills_h = cfg->height,
-                        .stills_yuv422 = 1,
-                        .one_shot_stills = 1,
-                        .max_preview_video_w = cfg->width,
-                        .max_preview_video_h = cfg->height,
-                        .num_preview_video_frames = 3,
-                        .stills_capture_circular_buffer_height = 0,
-                        .fast_preview_resume = 0,
-                        .use_stc_timestamp = MMAL_PARAM_TIMESTAMP_MODE_RESET_STC
-                };
-        status = mmal_port_parameter_set(rawcam->control, &cam_config.hdr);
         if (status != MMAL_SUCCESS) {
             vcos_log_error("Failed to set camera to single-shot");
             goto component_destroy;
         }
 
-                //.stills_yuv422 = 0,
-                //.one_shot_stills = 1,
+        //.stills_yuv422 = 0,
+        //.one_shot_stills = 1,
         status = mmal_port_parameter_get(output, &rx_timing.hdr);
         if (status != MMAL_SUCCESS) {
             vcos_log_error("Failed to get timing");
