@@ -1,1 +1,4 @@
-g++ -lmmal_core -lmmal_util -lmmal_vc_client -lvcos -lbcm_host -I/opt/vc/include/ -I/opt/vc/include/interface/vctypes/ -L/opt/vc/lib/ -o raspiraw raspiraw.cpp raspiCam.cpp
+#!/bin/bash
+g++ -lmmal_core -lmmal_util -lmmal_vc_client -lvcos -lbcm_host -I/opt/vc/include/ -I/opt/vc/include/interface/vctypes/ -L/opt/vc/lib/ -c -o raspiraw.o raspiraw.cpp
+ar rvs raspiraw.a raspiraw.o
+g++ -lmmal_core -lmmal_util -lmmal_vc_client -lvcos -lbcm_host -I/opt/vc/include/ -I/opt/vc/include/interface/vctypes/ -L/opt/vc/lib/ -o raspiCam raspiCam.cpp raspiraw.a
