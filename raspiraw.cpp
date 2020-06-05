@@ -549,21 +549,21 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
     uint32_t encoding;
     const struct sensor_def *sensor;
     struct mode_def *sensor_mode = NULL;
-    MMAL_STATUS_T status;
+    int status_int;
 
     bcm_host_init();
     vcos_log_register("RaspiRaw", VCOS_LOG_CATEGORY);
     {
-        status = configure_sensor_raw(&cfg, sensor, sensor_mode, &encoding);
+        status_int = configure_sensor_raw(&cfg, sensor, sensor_mode, &encoding);
 
         MMAL_COMPONENT_T *rawcam = NULL, *isp = NULL, *render = NULL;
         MMAL_PORT_T *output = NULL;
         MMAL_POOL_T *pool = NULL;
         MMAL_CONNECTION_T *rawcam_isp = NULL;
         MMAL_CONNECTION_T *isp_render = NULL;
+        MMAL_STATUS_T status;
         MMAL_PARAMETER_CAMERA_RX_CONFIG_T rx_cfg = {{MMAL_PARAMETER_CAMERA_RX_CONFIG, sizeof(rx_cfg)}};
         MMAL_PARAMETER_CAMERA_RX_TIMING_T rx_timing = {{MMAL_PARAMETER_CAMERA_RX_TIMING, sizeof(rx_timing)}};
-        int i;
 
         bcm_host_init();
         vcos_log_register("RaspiRaw", VCOS_LOG_CATEGORY);
@@ -828,7 +828,7 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
         }
     }
     running = 1;
-    for (i = 0; i < output->buffer_num; i++) {
+    for (int i = 0; i < output->buffer_num; i++) {
         MMAL_BUFFER_HEADER_T *buffer = mmal_queue_get(pool->queue);
 
         if (!buffer) {
