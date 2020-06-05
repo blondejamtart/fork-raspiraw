@@ -91,5 +91,5 @@ int raspiCam::start() {
             ptsa: NULL,
             ptso: NULL,
     };
-    return camera_main(cfg, &(this->callback));
+    return camera_main(cfg, &(raspiCam::callback));
 }

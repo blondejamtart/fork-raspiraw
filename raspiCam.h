@@ -14,7 +14,7 @@ public:
 
 private:
     int start();
-    virtual void callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
+    static void callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
 };
 
 #endif //FORK_RASPIRAW_RASPICAM_H
