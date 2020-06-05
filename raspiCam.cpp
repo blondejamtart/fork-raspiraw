@@ -13,10 +13,11 @@ raspiCam::~raspiCam() {
 
 }
 
-static void raspiCam::callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer) {
+void raspiCam::callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer) {
     static int count = 0;
     vcos_log_error("Buffer %p returned, filled %d, timestamp %llu, flags %04X", buffer, buffer->length, buffer->pts,
                    buffer->flags);
+    int running = 1;
     if (running) {
         RASPIRAW_PARAMS_T *cfg = (RASPIRAW_PARAMS_T *) port->userdata;
 
@@ -73,6 +74,8 @@ int raspiCam::start() {
             camera_num: -1,
             exposure_us: -1,
             i2c_bus: DEFAULT_I2C_DEVICE,
+            awb_gains_r: 0.0,
+            awb_gains_b: 0.0,
             regs: NULL,
             hinc: -1,
             vinc: -1,

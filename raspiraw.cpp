@@ -509,8 +509,6 @@ MMAL_STATUS_T create_filenames(char **finalName, char *pattern, int frame) {
     return MMAL_SUCCESS;
 }
 
-int running = 0;
-
 int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)) {
 //    RASPIRAW_PARAMS_T cfg = {
 //            .mode = 0,
@@ -546,6 +544,7 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
 //            .ptso = NULL,
 //    };
 
+    int running = 0;
     uint32_t encoding;
     const struct sensor_def *sensor;
     struct mode_def *sensor_mode = NULL;
