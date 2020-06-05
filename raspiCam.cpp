@@ -96,3 +96,9 @@ int raspiCam::start() {
     };
     return camera_main(cfg, &(raspiCam::callback));
 }
+
+int main() {
+    raspiCam camObject = new raspiCam();
+    camObject.start();
+    delete camObject;
+}
