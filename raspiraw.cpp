@@ -35,8 +35,8 @@ static char i2c_device_name[I2C_DEVICE_NAME_LEN];
 struct brcm_raw_header *brcm_header = NULL;
 
 
-static int i2c_rd(int fd, uint8_t i2c_addr, uint16_t reg, uint8_t *values, uint32_t n, const struct sensor_def *sensor)
-{
+static int
+i2c_rd(int fd, uint8_t i2c_addr, uint16_t reg, uint8_t *values, uint32_t n, const struct sensor_def *sensor) {
     int err;
     uint8_t buf[2] = {reg >> 8, reg & 0xff};
     struct i2c_rdwr_ioctl_data msgset;
@@ -55,8 +55,7 @@ static int i2c_rd(int fd, uint8_t i2c_addr, uint16_t reg, uint8_t *values, uint3
             },
     };
 
-    if (sensor->i2c_addressing == 1)
-    {
+    if (sensor->i2c_addressing == 1) {
         msgs[0].len = 1;
     }
     msgset.msgs = msgs;
@@ -70,31 +69,25 @@ static int i2c_rd(int fd, uint8_t i2c_addr, uint16_t reg, uint8_t *values, uint3
     return 0;
 }
 
-const struct sensor_def *probe_sensor(void)
-{
+const struct sensor_def *probe_sensor(void) {
     int fd;
     const struct sensor_def **sensor_list = &sensors[0];
     const struct sensor_def *sensor = NULL;
 
     fd = open(i2c_device_name, O_RDWR);
-    if (!fd)
-    {
+    if (!fd) {
         vcos_log_error("Couldn't open I2C device");
         return NULL;
     }
 
-    while (*sensor_list != NULL)
-    {
+    while (*sensor_list != NULL) {
         uint16_t reg = 0;
         sensor = *sensor_list;
         vcos_log_error("Probing sensor %s on addr %02X", sensor->name, sensor->i2c_addr);
-        if (sensor->i2c_ident_length <= 2)
-        {
+        if (sensor->i2c_ident_length <= 2) {
             if (!i2c_rd(fd, sensor->i2c_addr, sensor->i2c_ident_reg, (uint8_t * ) & reg, sensor->i2c_ident_length,
-                        sensor))
-            {
-                if (reg == sensor->i2c_ident_value)
-                {
+                        sensor)) {
+                if (reg == sensor->i2c_ident_value) {
                     vcos_log_error("Found sensor %s at address %02X", sensor->name, sensor->i2c_addr);
                     break;
                 }
@@ -106,53 +99,38 @@ const struct sensor_def *probe_sensor(void)
     return sensor;
 }
 
-void send_regs(int fd, const struct sensor_def *sensor, const struct sensor_regs *regs, int num_regs)
-{
+void send_regs(int fd, const struct sensor_def *sensor, const struct sensor_regs *regs, int num_regs) {
     int i;
-    for (i = 0; i < num_regs; i++)
-    {
-        if (regs[i].reg == 0xFFFF)
-        {
-            if (ioctl(fd, I2C_SLAVE_FORCE, regs[i].data) < 0)
-            {
+    for (i = 0; i < num_regs; i++) {
+        if (regs[i].reg == 0xFFFF) {
+            if (ioctl(fd, I2C_SLAVE_FORCE, regs[i].data) < 0) {
                 vcos_log_error("Failed to set I2C address to %02X", regs[i].data);
             }
-        }
-        else if (regs[i].reg == 0xFFFE)
-        {
+        } else if (regs[i].reg == 0xFFFE) {
             vcos_sleep(regs[i].data);
-        }
-        else
-        {
-            if (sensor->i2c_addressing == 1)
-            {
+        } else {
+            if (sensor->i2c_addressing == 1) {
                 unsigned char msg[3] = {regs[i].reg, regs[i].data & 0xFF};
                 int len = 2;
 
-                if (sensor->i2c_data_size == 2)
-                {
+                if (sensor->i2c_data_size == 2) {
                     msg[1] = (regs[i].data >> 8) & 0xFF;
                     msg[2] = regs[i].data & 0xFF;
                     len = 3;
                 }
-                if (write(fd, msg, len) != len)
-                {
+                if (write(fd, msg, len) != len) {
                     vcos_log_error("Failed to write register index %d (%02X val %02X)", i, regs[i].reg, regs[i].data);
                 }
-            }
-            else
-            {
+            } else {
                 unsigned char msg[4] = {regs[i].reg >> 8, regs[i].reg, regs[i].data};
                 int len = 3;
 
-                if (sensor->i2c_data_size == 2)
-                {
+                if (sensor->i2c_data_size == 2) {
                     msg[2] = regs[i].data >> 8;
                     msg[3] = regs[i].data;
                     len = 4;
                 }
-                if (write(fd, msg, len) != len)
-                {
+                if (write(fd, msg, len) != len) {
                     vcos_log_error("Failed to write register index %d", i);
                 }
             }
@@ -160,70 +138,8 @@ void send_regs(int fd, const struct sensor_def *sensor, const struct sensor_regs
     }
 }
 
-void start_camera_streaming(const struct sensor_def *sensor, struct mode_def *mode)
-{
-    int fd;
-    fd = open(i2c_device_name, O_RDWR);
-    if (!fd)
-    {
-        vcos_log_error("Couldn't open I2C device");
-        return;
-    }
-    if (ioctl(fd, I2C_SLAVE_FORCE, sensor->i2c_addr) < 0)
-    {
-        vcos_log_error("Failed to set I2C address");
-        return;
-    }
-    send_regs(fd, sensor, mode->regs, mode->num_regs);
-    close(fd);
-    vcos_log_error("Now streaming...");
-}
 
-void stop_camera_streaming(const struct sensor_def *sensor)
-{
-    int fd;
-    fd = open(i2c_device_name, O_RDWR);
-    if (!fd)
-    {
-        vcos_log_error("Couldn't open I2C device");
-        return;
-    }
-    if (ioctl(fd, I2C_SLAVE_FORCE, sensor->i2c_addr) < 0)
-    {
-        vcos_log_error("Failed to set I2C address");
-        return;
-    }
-    send_regs(fd, sensor, sensor->stop, sensor->num_stop_regs);
-    close(fd);
-}
-
-/**
- * Allocates and generates a filename based on the
- * user-supplied pattern and the frame number.
- * On successful return, finalName and tempName point to malloc()ed strings
- * which must be freed externally.  (On failure, returns nulls that
- * don't need free()ing.)
- *
- * @param finalName pointer receives an
- * @param pattern sprintf pattern with %d to be replaced by frame
- * @param frame for timelapse, the frame number
- * @return Returns a MMAL_STATUS_T giving result of operation
-*/
-
-MMAL_STATUS_T create_filenames(char **finalName, char *pattern, int frame)
-{
-    *finalName = NULL;
-    if (0 > asprintf(finalName, pattern, frame))
-    {
-        return MMAL_ENOMEM;    // It may be some other error, but it is not worth getting it right
-    }
-    return MMAL_SUCCESS;
-}
-
-int running = 0;
-
-uint32_t order_and_bit_depth_to_encoding(enum bayer_order order, int bit_depth)
-{
+uint32_t order_and_bit_depth_to_encoding(enum bayer_order order, int bit_depth) {
     //BAYER_ORDER_BGGR,
     //BAYER_ORDER_GBRG,
     //BAYER_ORDER_GRBG,
@@ -252,14 +168,12 @@ uint32_t order_and_bit_depth_to_encoding(enum bayer_order order, int bit_depth)
             MMAL_ENCODING_BAYER_SGRBG16,
             MMAL_ENCODING_BAYER_SRGGB16,
     };
-    if (order < 0 || order > 3)
-    {
+    if (order < 0 || order > 3) {
         vcos_log_error("order out of range - %d", order);
         return 0;
     }
 
-    switch (bit_depth)
-    {
+    switch (bit_depth) {
         case 8:
             return depth8[order];
         case 10:
@@ -273,8 +187,330 @@ uint32_t order_and_bit_depth_to_encoding(enum bayer_order order, int bit_depth)
     return 0;
 }
 
-int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer))
-{
+
+void modRegBit(struct mode_def *mode, uint16_t reg, int bit, int value, enum operation op) {
+    int i = 0;
+    uint16_t val;
+    while (i < mode->num_regs && mode->regs[i].reg != reg) i++;
+    if (i == mode->num_regs) {
+        vcos_log_error("Reg: %04X not found!\n", reg);
+        return;
+    }
+    val = mode->regs[i].data;
+
+    switch (op) {
+        case EQUAL:
+            val = (val | (1 << bit)) & (~((1 << bit) ^ (value << bit)));
+            break;
+        case SET:
+            val = val | (1 << bit);
+            break;
+        case CLEAR:
+            val = val & ~(1 << bit);
+            break;
+        case XOR:
+            val = val ^ (value << bit);
+            break;
+    }
+    mode->regs[i].data = val;
+}
+
+void modReg(struct mode_def *mode, uint16_t reg, int startBit, int endBit, int value, enum operation op) {
+    int i;
+    for (i = startBit; i <= endBit; i++) {
+        modRegBit(mode, reg, i, value >> i & 1, op);
+    }
+}
+
+void update_regs(const struct sensor_def *sensor, struct mode_def *mode, int hflip, int vflip, int exposure, int gain) {
+    if (sensor->vflip_reg) {
+        modRegBit(mode, sensor->vflip_reg, sensor->vflip_reg_bit, vflip, XOR);
+        if (vflip && !sensor->flips_dont_change_bayer_order) {
+            mode->order = (enum bayer_order) ((uint8_t)(mode->order) ^ (2));
+            // mode->order ^= 2;
+        }
+    }
+
+    if (sensor->hflip_reg) {
+        modRegBit(mode, sensor->hflip_reg, sensor->hflip_reg_bit, hflip, XOR);
+        if (hflip && !sensor->flips_dont_change_bayer_order) {
+            mode->order = (enum bayer_order) ((uint8_t)(mode->order) ^ (1));
+            // mode->order ^= 1;
+        }
+    }
+
+    if (sensor->exposure_reg && exposure != -1) {
+        if (exposure < 0 || exposure >= (1 << sensor->exposure_reg_num_bits)) {
+            vcos_log_error("Invalid exposure:%d, exposure range is 0 to %u!\n",
+                           exposure, (1 << sensor->exposure_reg_num_bits) - 1);
+        } else {
+            uint8_t val;
+            int i, j = sensor->exposure_reg_num_bits - 1;
+            int num_regs = (sensor->exposure_reg_num_bits + 7) >> 3;
+
+            for (i = 0; i < num_regs; i++, j -= 8) {
+                val = (exposure >> (j & ~7)) & 0xFF;
+                modReg(mode, sensor->exposure_reg + i, 0, j & 0x7, val, EQUAL);
+                vcos_log_error("Set exposure %04X to %02X", sensor->exposure_reg + i, val);
+            }
+        }
+    }
+    if (sensor->vts_reg && exposure != -1 && exposure >= mode->min_vts) {
+        if (exposure < 0 || exposure >= (1 << sensor->vts_reg_num_bits)) {
+            vcos_log_error("Invalid exposure:%d, vts range is 0 to %u!\n",
+                           exposure, (1 << sensor->vts_reg_num_bits) - 1);
+        } else {
+            uint8_t val;
+            int i, j = sensor->vts_reg_num_bits - 1;
+            int num_regs = (sensor->vts_reg_num_bits + 7) >> 3;
+
+            for (i = 0; i < num_regs; i++, j -= 8) {
+                val = (exposure >> (j & ~7)) & 0xFF;
+                modReg(mode, sensor->vts_reg + i, 0, j & 0x7, val, EQUAL);
+                vcos_log_error("Set vts %04X to %02X", sensor->vts_reg + i, val);
+            }
+        }
+    }
+    if (sensor->gain_reg && gain != -1) {
+        if (gain < 0 || gain >= (1 << sensor->gain_reg_num_bits)) {
+            vcos_log_error("Invalid gain:%d, gain range is 0 to %u\n",
+                           gain, (1 << sensor->gain_reg_num_bits) - 1);
+        } else {
+            uint8_t val;
+            int i, j = sensor->gain_reg_num_bits - 1;
+            int num_regs = (sensor->gain_reg_num_bits + 7) >> 3;
+
+            for (i = 0; i < num_regs; i++, j -= 8) {
+                val = (gain >> (j & ~7)) & 0xFF;
+                modReg(mode, sensor->gain_reg + i, 0, j & 0x7, val, EQUAL);
+                vcos_log_error("Set gain %04X to %02X", sensor->gain_reg + i, val);
+            }
+        }
+    }
+}
+
+void configure_sensor_raw(RASPIRAW_PARAMS_T *cfg, const struct sensor_def *sensor, struct mode_def *sensor_mode, uint32_t *encoding) {
+    snprintf(i2c_device_name, sizeof(i2c_device_name), "/dev/i2c-%d", cfg->i2c_bus);
+    printf("Using i2C device %s\n", i2c_device_name);
+    sensor = probe_sensor();
+    if (!sensor) {
+        vcos_log_error("No sensor found. Aborting");
+        return -1;
+    }
+
+    if (cfg->mode >= 0 && cfg.mode < sensor->num_modes) {
+        sensor_mode = &sensor->modes[cfg.mode];
+    }
+
+    if (!sensor_mode) {
+        vcos_log_error("Invalid mode %d - aborting", cfg->mode);
+        return -2;
+    }
+
+    if (cfg->regs) {
+        int r, b;
+        char *p, *q;
+
+        p = strtok(cfg->regs, ";");
+        while (p) {
+            vcos_assert(strlen(p) > 6);
+            vcos_assert(p[4] == ',');
+            vcos_assert(strlen(p) % 2);
+            p[4] = '\0';
+            q = p + 5;
+            sscanf(p, "%4x", &r);
+            while (*q) {
+                vcos_assert(isxdigit(q[0]));
+                vcos_assert(isxdigit(q[1]));
+
+                sscanf(q, "%2x", &b);
+                vcos_log_error("%04x: %02x", r, b);
+
+                modReg(sensor_mode, r, 0, 7, b, EQUAL);
+
+                ++r;
+                q += 2;
+            }
+            p = strtok(NULL, ";");
+        }
+    }
+
+    if (cfg->hinc >= 0) {
+        if (!strcmp(sensor->name, "ov5647"))
+            modReg(sensor_mode, 0x3814, 0, 7, cfg->hinc, EQUAL);
+    }
+
+    if (cfg->vinc >= 0) {
+        if (!strcmp(sensor->name, "ov5647"))
+            modReg(sensor_mode, 0x3815, 0, 7, cfg->vinc, EQUAL);
+    }
+
+    if (cfg->voinc >= 0) {
+        if (!strcmp(sensor->name, "imx219"))
+            modReg(sensor_mode, 0x0171, 0, 2, cfg->voinc, EQUAL);
+    }
+
+    if (cfg->hoinc >= 0) {
+        if (!strcmp(sensor->name, "imx219"))
+            modReg(sensor_mode, 0x0170, 0, 2, cfg->hoinc, EQUAL);
+    }
+
+    /*
+    if (cfg.fps > 0)
+    {
+        int n = 1000000000 / (sensor_mode->line_time_ns * cfg.fps);
+        modReg(sensor_mode, sensor->vts_reg + 0, 0, 7, n >> 8, EQUAL);
+        modReg(sensor_mode, sensor->vts_reg + 1, 0, 7, n & 0xFF, EQUAL);
+    }
+    */
+
+    if (cfg->width > 0) {
+        sensor_mode->width = cfg->width;
+        modReg(sensor_mode, sensor->xos_reg + 0, 0, 3, cfg->width >> 8, EQUAL);
+        modReg(sensor_mode, sensor->xos_reg + 1, 0, 7, cfg->width & 0xFF, EQUAL);
+    }
+
+    if (cfg->height > 0) {
+        sensor_mode->height = cfg->height;
+        modReg(sensor_mode, sensor->yos_reg + 0, 0, 3, cfg->height >> 8, EQUAL);
+        modReg(sensor_mode, sensor->yos_reg + 1, 0, 7, cfg->height & 0xFF, EQUAL);
+    }
+
+    if (cfg->left > 0) {
+        if (!strcmp(sensor->name, "ov5647")) {
+            int val = cfg->left * (cfg->mode < 2 ? 1 : 1 << (cfg->mode / 2 - 1));
+            modReg(sensor_mode, 0x3800, 0, 3, val >> 8, EQUAL);
+            modReg(sensor_mode, 0x3801, 0, 7, val & 0xFF, EQUAL);
+        }
+    }
+
+    if (cfg->top > 0) {
+        if (!strcmp(sensor->name, "ov5647")) {
+            int val = cfg->top * (cfg->mode < 2 ? 1 : 1 << (cfg->mode / 2 - 1));
+            modReg(sensor_mode, 0x3802, 0, 3, val >> 8, EQUAL);
+            modReg(sensor_mode, 0x3803, 0, 7, val & 0xFF, EQUAL);
+        }
+    }
+
+    if (cfg->bin44 == 1) {
+        if (!strcmp(sensor->name, "imx219")) {
+            fprintf(stderr, "start\n");
+            unsigned nwidth, nheight, border, end;
+            // enabled 4x4 binning
+//		modReg(sensor_mode, 0x0174, 0, 7, 2, EQUAL);
+//		modReg(sensor_mode, 0x0175, 0, 7, 2, EQUAL);
+
+            // calculate native fov x borders
+//		nwidth = cfg.width*4 * ((cfg.hoinc == 3) ? 2 : 1);
+            nwidth = cfg->width * 2 * ((cfg->hoinc == 3) ? 2 : 1);
+            border = (3280 - nwidth) / 2;
+            end = 3280 - border - 1;
+
+            // set x params
+            modReg(sensor_mode, 0x0164, 0, 7, border >> 8, EQUAL);
+            modReg(sensor_mode, 0x0165, 0, 7, border & 0xff, EQUAL);
+            modReg(sensor_mode, 0x0166, 0, 7, end >> 8, EQUAL);
+            modReg(sensor_mode, 0x0167, 0, 7, end & 0xff, EQUAL);
+
+            // calculate native fov y borders
+//		nheight = cfg.height*4 * ((cfg.voinc == 3) ? 2 : 1);
+            nheight = cfg->height * 2 * ((cfg->voinc == 3) ? 2 : 1);
+            border = (2464 - nheight) / 2;
+            end = 2464 - border - 1;
+
+            // set y params
+            modReg(sensor_mode, 0x0168, 0, 7, border >> 8, EQUAL);
+            modReg(sensor_mode, 0x0169, 0, 7, border & 0xff, EQUAL);
+            modReg(sensor_mode, 0x016a, 0, 7, end >> 8, EQUAL);
+            modReg(sensor_mode, 0x016b, 0, 7, end & 0xff, EQUAL);
+            fprintf(stderr, "end\n");
+        }
+    }
+
+    if (cfg->bit_depth == -1) {
+        cfg->bit_depth = sensor_mode->native_bit_depth;
+    }
+
+
+    if (cfg->write_headerg && (cfg->bit_depth != sensor_mode->native_bit_depth)) {
+        // needs change after fix for https://github.com/6by9/raspiraw/issues/2
+        vcos_log_error("--headerG supported for native bit depth only");
+        exit(-1);
+    }
+
+    if (cfg->exposure_us != -1) {
+        cfg->exposure = ((int64_t) cfg->exposure_us * 1000) / sensor_mode->line_time_ns;
+        vcos_log_error("Setting exposure to %d from time %dus", cfg->exposure, cfg->exposure_us);
+    }
+
+    update_regs(sensor, sensor_mode, cfg->hflip, cfg->vflip, cfg->exposure, cfg->gain);
+    if (sensor_mode->encoding == 0)
+        *encoding = order_and_bit_depth_to_encoding(sensor_mode->order, cfg->bit_depth);
+    else
+        *encoding = sensor_mode->encoding;
+    if (!(*encoding)) {
+        vcos_log_error("Failed to map bitdepth %d and order %d into encoding\n", cfg->bit_depth, sensor_mode->order);
+        return -3;
+    }
+    vcos_log_error("Encoding %08X", encoding);
+}
+
+
+void start_camera_streaming(const struct sensor_def *sensor, struct mode_def *mode) {
+    int fd;
+    fd = open(i2c_device_name, O_RDWR);
+    if (!fd) {
+        vcos_log_error("Couldn't open I2C device");
+        return;
+    }
+    if (ioctl(fd, I2C_SLAVE_FORCE, sensor->i2c_addr) < 0) {
+        vcos_log_error("Failed to set I2C address");
+        return;
+    }
+    send_regs(fd, sensor, mode->regs, mode->num_regs);
+    close(fd);
+    vcos_log_error("Now streaming...");
+}
+
+void stop_camera_streaming(const struct sensor_def *sensor) {
+    int fd;
+    fd = open(i2c_device_name, O_RDWR);
+    if (!fd) {
+        vcos_log_error("Couldn't open I2C device");
+        return;
+    }
+    if (ioctl(fd, I2C_SLAVE_FORCE, sensor->i2c_addr) < 0) {
+        vcos_log_error("Failed to set I2C address");
+        return;
+    }
+    send_regs(fd, sensor, sensor->stop, sensor->num_stop_regs);
+    close(fd);
+}
+
+/**
+ * Allocates and generates a filename based on the
+ * user-supplied pattern and the frame number.
+ * On successful return, finalName and tempName point to malloc()ed strings
+ * which must be freed externally.  (On failure, returns nulls that
+ * don't need free()ing.)
+ *
+ * @param finalName pointer receives an
+ * @param pattern sprintf pattern with %d to be replaced by frame
+ * @param frame for timelapse, the frame number
+ * @return Returns a MMAL_STATUS_T giving result of operation
+*/
+
+MMAL_STATUS_T create_filenames(char **finalName, char *pattern, int frame) {
+    *finalName = NULL;
+    if (0 > asprintf(finalName, pattern, frame)) {
+        return MMAL_ENOMEM;    // It may be some other error, but it is not worth getting it right
+    }
+    return MMAL_SUCCESS;
+}
+
+int running = 0;
+
+int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)) {
 //    RASPIRAW_PARAMS_T cfg = {
 //            .mode = 0,
 //            .hflip = 0,
@@ -308,486 +544,294 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
 //            .ptsa = NULL,
 //            .ptso = NULL,
 //    };
+
     uint32_t encoding;
     const struct sensor_def *sensor;
     struct mode_def *sensor_mode = NULL;
 
     bcm_host_init();
     vcos_log_register("RaspiRaw", VCOS_LOG_CATEGORY);
-
-    snprintf(i2c_device_name, sizeof(i2c_device_name), "/dev/i2c-%d", cfg.i2c_bus);
-    printf("Using i2C device %s\n", i2c_device_name);
-
-    sensor = probe_sensor();
-    if (!sensor)
     {
-        vcos_log_error("No sensor found. Aborting");
-        return -1;
-    }
+       configure_sensor_raw(&cfg, sensor, sensor_mode, &encoding)
 
-    if (cfg.mode >= 0 && cfg.mode < sensor->num_modes)
-    {
-        sensor_mode = &sensor->modes[cfg.mode];
-    }
+        MMAL_COMPONENT_T *rawcam = NULL, *isp = NULL, *render = NULL;
+        MMAL_STATUS_T status;
+        MMAL_PORT_T *output = NULL;
+        MMAL_POOL_T *pool = NULL;
+        MMAL_CONNECTION_T *rawcam_isp = NULL;
+        MMAL_CONNECTION_T *isp_render = NULL;
+        MMAL_PARAMETER_CAMERA_RX_CONFIG_T rx_cfg = {{MMAL_PARAMETER_CAMERA_RX_CONFIG, sizeof(rx_cfg)}};
+        MMAL_PARAMETER_CAMERA_RX_TIMING_T rx_timing = {{MMAL_PARAMETER_CAMERA_RX_TIMING, sizeof(rx_timing)}};
+        int i;
 
-    if (!sensor_mode)
-    {
-        vcos_log_error("Invalid mode %d - aborting", cfg.mode);
-        return -2;
-    }
+        bcm_host_init();
+        vcos_log_register("RaspiRaw", VCOS_LOG_CATEGORY);
 
-
-    if (cfg.regs)
-    {
-        int r, b;
-        char *p, *q;
-
-        p = strtok(cfg.regs, ";");
-        while (p)
-        {
-            vcos_assert(strlen(p) > 6);
-            vcos_assert(p[4] == ',');
-            vcos_assert(strlen(p) % 2);
-            p[4] = '\0';
-            q = p + 5;
-            sscanf(p, "%4x", &r);
-            while (*q)
-            {
-                vcos_assert(isxdigit(q[0]));
-                vcos_assert(isxdigit(q[1]));
-
-                sscanf(q, "%2x", &b);
-                vcos_log_error("%04x: %02x", r, b);
-
-                modReg(sensor_mode, r, 0, 7, b, EQUAL);
-
-                ++r;
-                q += 2;
-            }
-            p = strtok(NULL, ";");
+        status = mmal_component_create("vc.ril.rawcam", &rawcam);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to create rawcam");
+            return -1;
         }
-    }
 
-    if (cfg.hinc >= 0)
-    {
-        if (!strcmp(sensor->name, "ov5647"))
-            modReg(sensor_mode, 0x3814, 0, 7, cfg.hinc, EQUAL);
-    }
-
-    if (cfg.vinc >= 0)
-    {
-        if (!strcmp(sensor->name, "ov5647"))
-            modReg(sensor_mode, 0x3815, 0, 7, cfg.vinc, EQUAL);
-    }
-
-    if (cfg.voinc >= 0)
-    {
-        if (!strcmp(sensor->name, "imx219"))
-            modReg(sensor_mode, 0x0171, 0, 2, cfg.voinc, EQUAL);
-    }
-
-    if (cfg.hoinc >= 0)
-    {
-        if (!strcmp(sensor->name, "imx219"))
-            modReg(sensor_mode, 0x0170, 0, 2, cfg.hoinc, EQUAL);
-    }
-
-    if (cfg.fps > 0)
-    {
-        int n = 1000000000 / (sensor_mode->line_time_ns * cfg.fps);
-        modReg(sensor_mode, sensor->vts_reg + 0, 0, 7, n >> 8, EQUAL);
-        modReg(sensor_mode, sensor->vts_reg + 1, 0, 7, n & 0xFF, EQUAL);
-    }
-
-    if (cfg.width > 0)
-    {
-        sensor_mode->width = cfg.width;
-        modReg(sensor_mode, sensor->xos_reg + 0, 0, 3, cfg.width >> 8, EQUAL);
-        modReg(sensor_mode, sensor->xos_reg + 1, 0, 7, cfg.width & 0xFF, EQUAL);
-    }
-
-    if (cfg.height > 0)
-    {
-        sensor_mode->height = cfg.height;
-        modReg(sensor_mode, sensor->yos_reg + 0, 0, 3, cfg.height >> 8, EQUAL);
-        modReg(sensor_mode, sensor->yos_reg + 1, 0, 7, cfg.height & 0xFF, EQUAL);
-    }
-
-    if (cfg.left > 0)
-    {
-        if (!strcmp(sensor->name, "ov5647"))
-        {
-            int val = cfg.left * (cfg.mode < 2 ? 1 : 1 << (cfg.mode / 2 - 1));
-            modReg(sensor_mode, 0x3800, 0, 3, val >> 8, EQUAL);
-            modReg(sensor_mode, 0x3801, 0, 7, val & 0xFF, EQUAL);
-        }
-    }
-
-    if (cfg.top > 0)
-    {
-        if (!strcmp(sensor->name, "ov5647"))
-        {
-            int val = cfg.top * (cfg.mode < 2 ? 1 : 1 << (cfg.mode / 2 - 1));
-            modReg(sensor_mode, 0x3802, 0, 3, val >> 8, EQUAL);
-            modReg(sensor_mode, 0x3803, 0, 7, val & 0xFF, EQUAL);
-        }
-    }
-
-    if (cfg.bin44 == 1)
-    {
-        if (!strcmp(sensor->name, "imx219"))
-        {
-            fprintf(stderr, "start\n");
-            unsigned nwidth, nheight, border, end;
-            // enabled 4x4 binning
-//		modReg(sensor_mode, 0x0174, 0, 7, 2, EQUAL);
-//		modReg(sensor_mode, 0x0175, 0, 7, 2, EQUAL);
-
-            // calculate native fov x borders
-//		nwidth = cfg.width*4 * ((cfg.hoinc == 3) ? 2 : 1);
-            nwidth = cfg.width * 2 * ((cfg.hoinc == 3) ? 2 : 1);
-            border = (3280 - nwidth) / 2;
-            end = 3280 - border - 1;
-
-            // set x params
-            modReg(sensor_mode, 0x0164, 0, 7, border >> 8, EQUAL);
-            modReg(sensor_mode, 0x0165, 0, 7, border & 0xff, EQUAL);
-            modReg(sensor_mode, 0x0166, 0, 7, end >> 8, EQUAL);
-            modReg(sensor_mode, 0x0167, 0, 7, end & 0xff, EQUAL);
-
-            // calculate native fov y borders
-//		nheight = cfg.height*4 * ((cfg.voinc == 3) ? 2 : 1);
-            nheight = cfg.height * 2 * ((cfg.voinc == 3) ? 2 : 1);
-            border = (2464 - nheight) / 2;
-            end = 2464 - border - 1;
-
-            // set y params
-            modReg(sensor_mode, 0x0168, 0, 7, border >> 8, EQUAL);
-            modReg(sensor_mode, 0x0169, 0, 7, border & 0xff, EQUAL);
-            modReg(sensor_mode, 0x016a, 0, 7, end >> 8, EQUAL);
-            modReg(sensor_mode, 0x016b, 0, 7, end & 0xff, EQUAL);
-            fprintf(stderr, "end\n");
-        }
-    }
-
-    if (cfg.bit_depth == -1)
-    {
-        cfg.bit_depth = sensor_mode->native_bit_depth;
-    }
-
-
-    if (cfg.write_headerg && (cfg.bit_depth != sensor_mode->native_bit_depth))
-    {
-        // needs change after fix for https://github.com/6by9/raspiraw/issues/2
-        vcos_log_error("--headerG supported for native bit depth only");
-        exit(-1);
-    }
-
-    if (cfg.exposure_us != -1)
-    {
-        cfg.exposure = ((int64_t) cfg.exposure_us * 1000) / sensor_mode->line_time_ns;
-        vcos_log_error("Setting exposure to %d from time %dus", cfg.exposure, cfg.exposure_us);
-    }
-
-    update_regs(sensor, sensor_mode, cfg.hflip, cfg.vflip, cfg.exposure, cfg.gain);
-    if (sensor_mode->encoding == 0)
-        encoding = order_and_bit_depth_to_encoding(sensor_mode->order, cfg.bit_depth);
-    else
-        encoding = sensor_mode->encoding;
-    if (!encoding)
-    {
-        vcos_log_error("Failed to map bitdepth %d and order %d into encoding\n", cfg.bit_depth, sensor_mode->order);
-        return -3;
-    }
-    vcos_log_error("Encoding %08X", encoding);
-
-    MMAL_COMPONENT_T *rawcam = NULL, *isp = NULL, *render = NULL;
-    MMAL_STATUS_T status;
-    MMAL_PORT_T *output = NULL;
-    MMAL_POOL_T *pool = NULL;
-    MMAL_CONNECTION_T *rawcam_isp = NULL;
-    MMAL_CONNECTION_T *isp_render = NULL;
-    MMAL_PARAMETER_CAMERA_RX_CONFIG_T rx_cfg = {{MMAL_PARAMETER_CAMERA_RX_CONFIG, sizeof(rx_cfg)}};
-    MMAL_PARAMETER_CAMERA_RX_TIMING_T rx_timing = {{MMAL_PARAMETER_CAMERA_RX_TIMING, sizeof(rx_timing)}};
-    int i;
-
-    bcm_host_init();
-    vcos_log_register("RaspiRaw", VCOS_LOG_CATEGORY);
-
-    status = mmal_component_create("vc.ril.rawcam", &rawcam);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to create rawcam");
-        return -1;
-    }
-
-    status = mmal_component_create("vc.ril.isp", &isp);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to create isp");
-        goto component_destroy;
-    }
-
-    status = mmal_component_create(MMAL_COMPONENT_DEFAULT_VIDEO_RENDERER, &render);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to create render");
-        goto component_destroy;
-    }
-
-    output = rawcam->output[0];
-    status = mmal_port_parameter_get(output, &rx_cfg.hdr);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to get cfg");
-        goto component_destroy;
-    }
-    if (sensor_mode->encoding || cfg.bit_depth == sensor_mode->native_bit_depth)
-    {
-        rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_NONE;
-        rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_NONE;
-    }
-    else
-    {
-        switch (sensor_mode->native_bit_depth)
-        {
-            case 8:
-                rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_8;
-                break;
-            case 10:
-                rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_10;
-                break;
-            case 12:
-                rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_12;
-                break;
-            case 14:
-                rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_16;
-                break;
-            case 16:
-                rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_16;
-                break;
-            default:
-                vcos_log_error("Unknown native bit depth %d", sensor_mode->native_bit_depth);
-                rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_NONE;
-                break;
-        }
-        switch (cfg.bit_depth)
-        {
-            case 8:
-                rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_8;
-                break;
-            case 10:
-                rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_RAW10;
-                break;
-            case 12:
-                rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_RAW12;
-                break;
-            case 14:
-                rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_14;
-                break;
-            case 16:
-                rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_16;
-                break;
-            default:
-                vcos_log_error("Unknown output bit depth %d", cfg.bit_depth);
-                rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_NONE;
-                break;
-        }
-    }
-    vcos_log_error("Set pack to %d, unpack to %d", rx_cfg.unpack, rx_cfg.pack);
-    if (sensor_mode->data_lanes)
-        rx_cfg.data_lanes = sensor_mode->data_lanes;
-    if (sensor_mode->image_id)
-        rx_cfg.image_id = sensor_mode->image_id;
-    status = mmal_port_parameter_set(output, &rx_cfg.hdr);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to set cfg");
-        goto component_destroy;
-    }
-    status = mmal_port_parameter_get(output, &rx_timing.hdr);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to get timing");
-        goto component_destroy;
-    }
-    if (sensor_mode->timing1)
-        rx_timing.timing1 = sensor_mode->timing1;
-    if (sensor_mode->timing2)
-        rx_timing.timing2 = sensor_mode->timing2;
-    if (sensor_mode->timing3)
-        rx_timing.timing3 = sensor_mode->timing3;
-    if (sensor_mode->timing4)
-        rx_timing.timing4 = sensor_mode->timing4;
-    if (sensor_mode->timing5)
-        rx_timing.timing5 = sensor_mode->timing5;
-    if (sensor_mode->term1)
-        rx_timing.term1 = sensor_mode->term1;
-    if (sensor_mode->term2)
-        rx_timing.term2 = sensor_mode->term2;
-    vcos_log_error("Timing %u/%u, %u/%u/%u, %u/%u",
-                   rx_timing.timing1, rx_timing.timing2,
-                   rx_timing.timing3, rx_timing.timing4, rx_timing.timing5,
-                   rx_timing.term1, rx_timing.term2);
-    status = mmal_port_parameter_set(output, &rx_timing.hdr);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to set timing");
-        goto component_destroy;
-    }
-
-    if (cfg.camera_num != -1)
-    {
-        vcos_log_error("Set camera_num to %d", cfg.camera_num);
-        status = mmal_port_parameter_set_int32(output, MMAL_PARAMETER_CAMERA_NUM, cfg.camera_num);
-        if (status != MMAL_SUCCESS)
-        {
-            vcos_log_error("Failed to set camera_num");
+        status = mmal_component_create("vc.ril.isp", &isp);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to create isp");
             goto component_destroy;
         }
-    }
 
-    status = mmal_component_enable(rawcam);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to enable rawcam");
-        goto component_destroy;
-    }
-    status = mmal_component_enable(render);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to enable render");
-        goto component_destroy;
-    }
+        status = mmal_component_create(MMAL_COMPONENT_DEFAULT_VIDEO_RENDERER, &render);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to create render");
+            goto component_destroy;
+        }
 
-    output->format->es->video.crop.width = sensor_mode->width;
-    output->format->es->video.crop.height = sensor_mode->height;
-    output->format->es->video.width = VCOS_ALIGN_UP(sensor_mode->width, 16);
-    output->format->es->video.height = VCOS_ALIGN_UP(sensor_mode->height, 16);
-    output->format->encoding = encoding;
-
-    status = mmal_port_format_commit(output);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed port_format_commit");
-        goto component_disable;
-    }
-
-    output->buffer_size = output->buffer_size_recommended;
-    output->buffer_num = output->buffer_num_recommended;
-
-    if (!cfg.capture)
-    {
-        vcos_log_error("capture mode plz!");
-        return -1;
-    }
-
-    if (cfg.write_header || cfg.write_header0)
-    {
-        brcm_header = (struct brcm_raw_header *) malloc(BRCM_RAW_HEADER_LENGTH);
-        if (brcm_header)
-        {
-            memset(brcm_header, 0, BRCM_RAW_HEADER_LENGTH);
-            brcm_header->id = BRCM_ID_SIG;
-            brcm_header->version = HEADER_VERSION;
-            brcm_header->mode.width = sensor_mode->width;
-            brcm_header->mode.height = sensor_mode->height;
-            //FIXME: Ought to check that the sensor is producing
-            //Bayer rather than just assuming.
-            brcm_header->mode.format = VC_IMAGE_BAYER;
-            switch (sensor_mode->order)
-            {
-                case BAYER_ORDER_BGGR:
-                    brcm_header->mode.bayer_order = VC_IMAGE_BAYER_BGGR;
-                    break;
-                case BAYER_ORDER_GBRG:
-                    brcm_header->mode.bayer_order = VC_IMAGE_BAYER_GBRG;
-                    break;
-                case BAYER_ORDER_GRBG:
-                    brcm_header->mode.bayer_order = VC_IMAGE_BAYER_GRBG;
-                    break;
-                case BAYER_ORDER_RGGB:
-                    brcm_header->mode.bayer_order = VC_IMAGE_BAYER_RGGB;
-                    break;
-            }
-            switch (cfg.bit_depth)
-            {
+        output = rawcam->output[0];
+        status = mmal_port_parameter_get(output, &rx_cfg.hdr);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to get cfg");
+            goto component_destroy;
+        }
+        if (sensor_mode->encoding || cfg.bit_depth == sensor_mode->native_bit_depth) {
+            rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_NONE;
+            rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_NONE;
+        } else {
+            switch (sensor_mode->native_bit_depth) {
                 case 8:
-                    brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW8;
+                    rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_8;
                     break;
                 case 10:
-                    brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW10;
+                    rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_10;
                     break;
                 case 12:
-                    brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW12;
+                    rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_12;
                     break;
                 case 14:
-                    brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW14;
+                    rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_16;
                     break;
                 case 16:
-                    brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW16;
+                    rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_16;
+                    break;
+                default:
+                    vcos_log_error("Unknown native bit depth %d", sensor_mode->native_bit_depth);
+                    rx_cfg.unpack = MMAL_CAMERA_RX_CONFIG_UNPACK_NONE;
                     break;
             }
-            if (cfg.write_header0)
-            {
-                // Save bcrm_header into one file only
-                FILE *file;
-                file = fopen(cfg.write_header0, "wb");
-                if (file)
-                {
-                    fwrite(brcm_header, BRCM_RAW_HEADER_LENGTH, 1, file);
-                    fclose(file);
-                }
+            switch (cfg.bit_depth) {
+                case 8:
+                    rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_8;
+                    break;
+                case 10:
+                    rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_RAW10;
+                    break;
+                case 12:
+                    rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_RAW12;
+                    break;
+                case 14:
+                    rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_14;
+                    break;
+                case 16:
+                    rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_16;
+                    break;
+                default:
+                    vcos_log_error("Unknown output bit depth %d", cfg.bit_depth);
+                    rx_cfg.pack = MMAL_CAMERA_RX_CONFIG_PACK_NONE;
+                    break;
             }
         }
-    }
-    else if (cfg.write_headerg)
-    {
-        // Save pgm_header into one file only
-        FILE *file;
-        file = fopen(cfg.write_headerg, "wb");
-        if (file)
-        {
-            fprintf(file, "P5\n%d %d\n255\n", sensor_mode->width, sensor_mode->height);
-            fclose(file);
+        vcos_log_error("Set pack to %d, unpack to %d", rx_cfg.unpack, rx_cfg.pack);
+        if (sensor_mode->data_lanes)
+            rx_cfg.data_lanes = sensor_mode->data_lanes;
+        if (sensor_mode->image_id)
+            rx_cfg.image_id = sensor_mode->image_id;
+        // TODO: set to single mode here
+        status = mmal_port_parameter_set(output, &rx_cfg.hdr);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to set cfg");
+            goto component_destroy;
+        }
+        MMAL_PARAMETER_CAMERA_CONFIG_T cam_config =
+                {
+                        { MMAL_PARAMETER_CAMERA_CONFIG, sizeof(cam_config) },
+                        .max_stills_w = cfg->width,
+                        .max_stills_h = cfg->height,
+                        .stills_yuv422 = 1,
+                        .one_shot_stills = 1,
+                        .max_preview_video_w = cfg->width,
+                        .max_preview_video_h = cfg->height,
+                        .num_preview_video_frames = 3,
+                        .stills_capture_circular_buffer_height = 0,
+                        .fast_preview_resume = 0,
+                        .use_stc_timestamp = MMAL_PARAM_TIMESTAMP_MODE_RESET_STC
+                };
+        status = mmal_port_parameter_set(rawcam->control, &cam_config.hdr);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to set camera to single-shot");
+            goto component_destroy;
+        }
+
+                //.stills_yuv422 = 0,
+                //.one_shot_stills = 1,
+        status = mmal_port_parameter_get(output, &rx_timing.hdr);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to get timing");
+            goto component_destroy;
+        }
+        if (sensor_mode->timing1)
+            rx_timing.timing1 = sensor_mode->timing1;
+        if (sensor_mode->timing2)
+            rx_timing.timing2 = sensor_mode->timing2;
+        if (sensor_mode->timing3)
+            rx_timing.timing3 = sensor_mode->timing3;
+        if (sensor_mode->timing4)
+            rx_timing.timing4 = sensor_mode->timing4;
+        if (sensor_mode->timing5)
+            rx_timing.timing5 = sensor_mode->timing5;
+        if (sensor_mode->term1)
+            rx_timing.term1 = sensor_mode->term1;
+        if (sensor_mode->term2)
+            rx_timing.term2 = sensor_mode->term2;
+        vcos_log_error("Timing %u/%u, %u/%u/%u, %u/%u",
+                       rx_timing.timing1, rx_timing.timing2,
+                       rx_timing.timing3, rx_timing.timing4, rx_timing.timing5,
+                       rx_timing.term1, rx_timing.term2);
+        status = mmal_port_parameter_set(output, &rx_timing.hdr);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to set timing");
+            goto component_destroy;
+        }
+
+        if (cfg.camera_num != -1) {
+            vcos_log_error("Set camera_num to %d", cfg.camera_num);
+            status = mmal_port_parameter_set_int32(output, MMAL_PARAMETER_CAMERA_NUM, cfg.camera_num);
+            if (status != MMAL_SUCCESS) {
+                vcos_log_error("Failed to set camera_num");
+                goto component_destroy;
+            }
+        }
+
+        status = mmal_component_enable(rawcam);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to enable rawcam");
+            goto component_destroy;
+        }
+        status = mmal_component_enable(render);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to enable render");
+            goto component_destroy;
+        }
+
+        output->format->es->video.crop.width = sensor_mode->width;
+        output->format->es->video.crop.height = sensor_mode->height;
+        output->format->es->video.width = VCOS_ALIGN_UP(sensor_mode->width, 16);
+        output->format->es->video.height = VCOS_ALIGN_UP(sensor_mode->height, 16);
+        output->format->encoding = encoding;
+
+        status = mmal_port_format_commit(output);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed port_format_commit");
+            goto component_disable;
+        }
+
+        output->buffer_size = output->buffer_size_recommended;
+        output->buffer_num = output->buffer_num_recommended;
+
+        if (!cfg.capture) {
+            vcos_log_error("capture mode plz!");
+            return -1;
+        }
+
+        if (cfg.write_header || cfg.write_header0) {
+            brcm_header = (struct brcm_raw_header *) malloc(BRCM_RAW_HEADER_LENGTH);
+            if (brcm_header) {
+                memset(brcm_header, 0, BRCM_RAW_HEADER_LENGTH);
+                brcm_header->id = BRCM_ID_SIG;
+                brcm_header->version = HEADER_VERSION;
+                brcm_header->mode.width = sensor_mode->width;
+                brcm_header->mode.height = sensor_mode->height;
+                //FIXME: Ought to check that the sensor is producing
+                //Bayer rather than just assuming.
+                brcm_header->mode.format = VC_IMAGE_BAYER;
+                switch (sensor_mode->order) {
+                    case BAYER_ORDER_BGGR:
+                        brcm_header->mode.bayer_order = VC_IMAGE_BAYER_BGGR;
+                        break;
+                    case BAYER_ORDER_GBRG:
+                        brcm_header->mode.bayer_order = VC_IMAGE_BAYER_GBRG;
+                        break;
+                    case BAYER_ORDER_GRBG:
+                        brcm_header->mode.bayer_order = VC_IMAGE_BAYER_GRBG;
+                        break;
+                    case BAYER_ORDER_RGGB:
+                        brcm_header->mode.bayer_order = VC_IMAGE_BAYER_RGGB;
+                        break;
+                }
+                switch (cfg.bit_depth) {
+                    case 8:
+                        brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW8;
+                        break;
+                    case 10:
+                        brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW10;
+                        break;
+                    case 12:
+                        brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW12;
+                        break;
+                    case 14:
+                        brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW14;
+                        break;
+                    case 16:
+                        brcm_header->mode.bayer_format = VC_IMAGE_BAYER_RAW16;
+                        break;
+                }
+                if (cfg.write_header0) {
+                    // Save bcrm_header into one file only
+                    FILE *file;
+                    file = fopen(cfg.write_header0, "wb");
+                    if (file) {
+                        fwrite(brcm_header, BRCM_RAW_HEADER_LENGTH, 1, file);
+                        fclose(file);
+                    }
+                }
+            }
+        } else if (cfg.write_headerg) {
+            // Save pgm_header into one file only
+            FILE *file;
+            file = fopen(cfg.write_headerg, "wb");
+            if (file) {
+                fprintf(file, "P5\n%d %d\n255\n", sensor_mode->width, sensor_mode->height);
+                fclose(file);
+            }
+        }
+
+        status = mmal_port_parameter_set_boolean(output, MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to set zero copy");
+            goto component_disable;
+        }
+
+        vcos_log_error("Create pool of %d buffers of size %d", output->buffer_num, output->buffer_size);
+        pool = mmal_port_pool_create(output, output->buffer_num, output->buffer_size);
+        if (!pool) {
+            vcos_log_error("Failed to create pool");
+            goto component_disable;
+        }
+
+        output->userdata = (struct MMAL_PORT_USERDATA_T *) &cfg;
+        status = mmal_port_enable(output, callback);
+        if (status != MMAL_SUCCESS) {
+            vcos_log_error("Failed to enable port");
+            goto pool_destroy;
         }
     }
-
-    status = mmal_port_parameter_set_boolean(output, MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to set zero copy");
-        goto component_disable;
-    }
-
-    vcos_log_error("Create pool of %d buffers of size %d", output->buffer_num, output->buffer_size);
-    pool = mmal_port_pool_create(output, output->buffer_num, output->buffer_size);
-    if (!pool)
-    {
-        vcos_log_error("Failed to create pool");
-        goto component_disable;
-    }
-
-    output->userdata = (struct MMAL_PORT_USERDATA_T *) &cfg;
-    status = mmal_port_enable(output, callback);
-    if (status != MMAL_SUCCESS)
-    {
-        vcos_log_error("Failed to enable port");
-        goto pool_destroy;
-    }
     running = 1;
-    for (i = 0; i < output->buffer_num; i++)
-    {
+    for (i = 0; i < output->buffer_num; i++) {
         MMAL_BUFFER_HEADER_T *buffer = mmal_queue_get(pool->queue);
 
-        if (!buffer)
-        {
+        if (!buffer) {
             vcos_log_error("Where'd my buffer go?!");
             goto port_disable;
         }
         status = mmal_port_send_buffer(output, buffer);
-        if (status != MMAL_SUCCESS)
-        {
+        if (status != MMAL_SUCCESS) {
             vcos_log_error("mmal_port_send_buffer failed on buffer %p, status %d", buffer, status);
             goto port_disable;
         }
@@ -802,11 +846,9 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
     stop_camera_streaming(sensor);
 
     port_disable:
-    if (cfg.capture)
-    {
+    if (cfg.capture) {
         status = mmal_port_disable(output);
-        if (status != MMAL_SUCCESS)
-        {
+        if (status != MMAL_SUCCESS) {
             vcos_log_error("Failed to disable port");
             return -1;
         }
@@ -814,13 +856,11 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
     pool_destroy:
     if (pool)
         mmal_port_pool_destroy(output, pool);
-    if (isp_render)
-    {
+    if (isp_render) {
         mmal_connection_disable(isp_render);
         mmal_connection_destroy(isp_render);
     }
-    if (rawcam_isp)
-    {
+    if (rawcam_isp) {
         mmal_connection_disable(rawcam_isp);
         mmal_connection_destroy(rawcam_isp);
     }
@@ -828,18 +868,15 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
     if (brcm_header)
         free(brcm_header);
     status = mmal_component_disable(render);
-    if (status != MMAL_SUCCESS)
-    {
+    if (status != MMAL_SUCCESS) {
         vcos_log_error("Failed to disable render");
     }
     status = mmal_component_disable(isp);
-    if (status != MMAL_SUCCESS)
-    {
+    if (status != MMAL_SUCCESS) {
         vcos_log_error("Failed to disable isp");
     }
     status = mmal_component_disable(rawcam);
-    if (status != MMAL_SUCCESS)
-    {
+    if (status != MMAL_SUCCESS) {
         vcos_log_error("Failed to disable rawcam");
     }
     component_destroy:
@@ -850,23 +887,17 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
     if (render)
         mmal_component_destroy(render);
 
-    if (cfg.write_timestamps)
-    {
+    if (cfg.write_timestamps) {
         // Save timestamps
         FILE *file;
         file = fopen(cfg.write_timestamps, "wb");
-        if (file)
-        {
+        if (file) {
             int64_t old;
             PTS_NODE_T aux;
-            for (aux = cfg.ptsa; aux != cfg.ptso; aux = aux->nxt)
-            {
-                if (aux == cfg.ptsa)
-                {
+            for (aux = cfg.ptsa; aux != cfg.ptso; aux = aux->nxt) {
+                if (aux == cfg.ptsa) {
                     fprintf(file, ",%d,%lld\n", aux->idx, aux->pts);
-                }
-                else
-                {
+                } else {
                     fprintf(file, "%lld,%d,%lld\n", aux->pts - old, aux->idx, aux->pts);
                 }
                 old = aux->pts;
@@ -874,8 +905,7 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
             fclose(file);
         }
 
-        while (cfg.ptsa != cfg.ptso)
-        {
+        while (cfg.ptsa != cfg.ptso) {
             PTS_NODE_T aux = cfg.ptsa->nxt;
             free(cfg.ptsa);
             cfg.ptsa = aux;
@@ -885,130 +915,3 @@ int camera_main(RASPIRAW_PARAMS_T cfg, void (*callback)(MMAL_PORT_T *port, MMAL_
 
     return 0;
 }
-
-void modRegBit(struct mode_def *mode, uint16_t reg, int bit, int value, enum operation op)
-{
-    int i = 0;
-    uint16_t val;
-    while (i < mode->num_regs && mode->regs[i].reg != reg) i++;
-    if (i == mode->num_regs)
-    {
-        vcos_log_error("Reg: %04X not found!\n", reg);
-        return;
-    }
-    val = mode->regs[i].data;
-
-    switch (op)
-    {
-        case EQUAL:
-            val = (val | (1 << bit)) & (~((1 << bit) ^ (value << bit)));
-            break;
-        case SET:
-            val = val | (1 << bit);
-            break;
-        case CLEAR:
-            val = val & ~(1 << bit);
-            break;
-        case XOR:
-            val = val ^ (value << bit);
-            break;
-    }
-    mode->regs[i].data = val;
-}
-
-void modReg(struct mode_def *mode, uint16_t reg, int startBit, int endBit, int value, enum operation op)
-{
-    int i;
-    for (i = startBit; i <= endBit; i++)
-    {
-        modRegBit(mode, reg, i, value >> i & 1, op);
-    }
-}
-
-void update_regs(const struct sensor_def *sensor, struct mode_def *mode, int hflip, int vflip, int exposure, int gain)
-{
-    if (sensor->vflip_reg)
-    {
-        modRegBit(mode, sensor->vflip_reg, sensor->vflip_reg_bit, vflip, XOR);
-        if (vflip && !sensor->flips_dont_change_bayer_order)
-        {
-            mode->order = (enum bayer_order)((uint8_t)(mode->order)^(2));
-            // mode->order ^= 2;
-        }
-    }
-
-    if (sensor->hflip_reg)
-    {
-        modRegBit(mode, sensor->hflip_reg, sensor->hflip_reg_bit, hflip, XOR);
-        if (hflip && !sensor->flips_dont_change_bayer_order)
-        {
-            mode->order = (enum bayer_order)((uint8_t)(mode->order)^(1));
-            // mode->order ^= 1;
-        }
-    }
-
-    if (sensor->exposure_reg && exposure != -1)
-    {
-        if (exposure < 0 || exposure >= (1 << sensor->exposure_reg_num_bits))
-        {
-            vcos_log_error("Invalid exposure:%d, exposure range is 0 to %u!\n",
-                           exposure, (1 << sensor->exposure_reg_num_bits) - 1);
-        }
-        else
-        {
-            uint8_t val;
-            int i, j = sensor->exposure_reg_num_bits - 1;
-            int num_regs = (sensor->exposure_reg_num_bits + 7) >> 3;
-
-            for (i = 0; i < num_regs; i++, j -= 8)
-            {
-                val = (exposure >> (j & ~7)) & 0xFF;
-                modReg(mode, sensor->exposure_reg + i, 0, j & 0x7, val, EQUAL);
-                vcos_log_error("Set exposure %04X to %02X", sensor->exposure_reg + i, val);
-            }
-        }
-    }
-    if (sensor->vts_reg && exposure != -1 && exposure >= mode->min_vts)
-    {
-        if (exposure < 0 || exposure >= (1 << sensor->vts_reg_num_bits))
-        {
-            vcos_log_error("Invalid exposure:%d, vts range is 0 to %u!\n",
-                           exposure, (1 << sensor->vts_reg_num_bits) - 1);
-        }
-        else
-        {
-            uint8_t val;
-            int i, j = sensor->vts_reg_num_bits - 1;
-            int num_regs = (sensor->vts_reg_num_bits + 7) >> 3;
-
-            for (i = 0; i < num_regs; i++, j -= 8)
-            {
-                val = (exposure >> (j & ~7)) & 0xFF;
-                modReg(mode, sensor->vts_reg + i, 0, j & 0x7, val, EQUAL);
-                vcos_log_error("Set vts %04X to %02X", sensor->vts_reg + i, val);
-            }
-        }
-    }
-    if (sensor->gain_reg && gain != -1)
-    {
-        if (gain < 0 || gain >= (1 << sensor->gain_reg_num_bits))
-        {
-            vcos_log_error("Invalid gain:%d, gain range is 0 to %u\n",
-                           gain, (1 << sensor->gain_reg_num_bits) - 1);
-        }
-        else
-        {
-            uint8_t val;
-            int i, j = sensor->gain_reg_num_bits - 1;
-            int num_regs = (sensor->gain_reg_num_bits + 7) >> 3;
-
-            for (i = 0; i < num_regs; i++, j -= 8)
-            {
-                val = (gain >> (j & ~7)) & 0xFF;
-                modReg(mode, sensor->gain_reg + i, 0, j & 0x7, val, EQUAL);
-                vcos_log_error("Set gain %04X to %02X", sensor->gain_reg + i, val);
-            }
-        }
-    }
-}
-
